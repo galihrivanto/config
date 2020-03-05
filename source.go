@@ -24,6 +24,17 @@ func (s *Snapshot) Checksum() string {
 // Loader is config source loader
 type Loader interface {
 	Load() (*Snapshot, error)
+
+	// assign stream decoder for config loader
+	// Loader implementation must aware and use
+	// decoder before unmarshalling
+	SetDecoder(Decoder)
+}
+
+// Decoder decode config stream before loaded
+// which can be used to decrypt encoded stream
+type Decoder interface {
+	Decode([]byte) []byte
 }
 
 // Watchable indicate source is support watch changes

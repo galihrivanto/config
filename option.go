@@ -39,8 +39,12 @@ func EnableWatcher(ctx context.Context, d ...time.Duration) Option {
 }
 
 // WithSource add new configuration source
-func WithSource(loader Loader) Option {
+func WithSource(loader Loader, decoder ...Decoder) Option {
 	return func(o *Options) {
+		if len(decoder) > 0 {
+			loader.SetDecoder(decoder[0])
+		}
+
 		o.sources = append(o.sources, loader)
 	}
 }

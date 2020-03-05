@@ -2,18 +2,55 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"log"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
+	yaml "gopkg.in/yaml.v3"
 )
+
+var (
+	fileTransformers = map[string]fileTransformer{
+		"yaml": &yamlFileTransformer{},
+		"json": &jsonFileTransformer{},
+	}
+)
+
+// fileTransformer transform file to json stream based on its extension
+type fileTransformer interface {
+	Transform([]byte) ([]byte, error)
+}
+
+type jsonFileTransformer struct{}
+
+func (l *jsonFileTransformer) Transform(src []byte) ([]byte, error) {
+	// noop
+	return src, nil
+}
+
+type yamlFileTransformer struct{}
+
+func (l *yamlFileTransformer) Transform(src []byte) ([]byte, error) {
+	dest := make(map[string]interface{})
+	if err := yaml.Unmarshal(src, &dest); err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(dest)
+}
 
 type fileSource struct {
 	file   string
 	format string
 	sync.RWMutex
+
+	// decoder
+	decoder Decoder
+
 	cancel context.CancelFunc
 
 	// current changeset
@@ -42,9 +79,30 @@ func (s *fileSource) Load() (*Snapshot, error) {
 	return snap, nil
 }
 
+func (s *fileSource) SetDecoder(decoder Decoder) {
+	s.decoder = decoder
+}
+
 // readFile read configuration file and put into current snapshot
 func (s *fileSource) readFile() (*Snapshot, error) {
 	b, err := ioutil.ReadFile(s.file)
+	if err != nil {
+		return nil, err
+	}
+
+	// if decoder assigned, then decode stream before transforming
+	if s.decoder != nil {
+		b = s.decoder.Decode(b)
+	}
+
+	// transform based on format (ext)
+	transformer, ok := fileTransformers[s.format]
+	if !ok {
+		// fallback to json
+		transformer = &jsonFileTransformer{}
+	}
+
+	b, err = transformer.Transform(b)
 	if err != nil {
 		return nil, err
 	}
@@ -94,9 +152,14 @@ func (s *fileSource) watchChanges() {
 
 // File create config source from give file
 func File(file string, watch ...bool) Loader {
+	ext := filepath.Ext(file)
+	if len(ext) > 0 {
+		ext = ext[1:]
+	}
+
 	s := &fileSource{
 		file:   file,
-		format: filepath.Ext(file)[1:],
+		format: strings.ToLower(ext),
 	}
 
 	if len(watch) > 0 && watch[0] {
