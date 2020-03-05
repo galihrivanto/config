@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -68,25 +69,22 @@ func decode(src []byte) []byte {
 	return plainText
 }
 
-type decoder struct {}
+type decoder struct{}
 
 func (d *decoder) Decode(src []byte) []byte {
 	return decode(src)
 }
 
-
 func main() {
+	var name, slogan, nested string
+
+	flag.StringVar(&name, "name", "", "person name")
+	flag.StringVar(&slogan, "slogan", "", "person slogan")
+	flag.StringVar(&nested, "nested.props.deep", "", "cli nested")
+
+	flag.Parse()
+
 	// // TODO: create runner here which watching remote config. for every changeset, dump its value
-	// s := config.New(
-	// 	config.Env(),
-	// 	config.Yaml("/etc/config.yaml"),
-	// 	config.Args(),
-	// 	config.Etcd("localhost:2379"),
-	// ).Watch()
-
-	// dbhost := s.Get("db.host").String()
-	// dbport := s.Get("db.port").Int()
-
 	// for testing, encode sample file
 	if err := encodeFile("test.json", "test-encoded.json"); err != nil {
 		log.Fatal(err)
@@ -102,6 +100,12 @@ func main() {
 		),
 		config.WithSource(
 			config.File("test.yaml", true),
+		),
+		config.WithSource(
+			config.Cli(),
+		),
+		config.WithSource(
+			config.Etcd("127.0.0.1:2379", time.Second*5, "/configuration/tems"),
 		),
 		config.EnableWatcher(ctx, time.Second*5),
 	)

@@ -46,12 +46,11 @@ func (l *yamlFileTransformer) Transform(src []byte) ([]byte, error) {
 type fileSource struct {
 	file   string
 	format string
+	watch  bool
 	sync.RWMutex
 
 	// decoder
 	decoder Decoder
-
-	cancel context.CancelFunc
 
 	// current changeset
 	current *Snapshot
@@ -112,11 +111,11 @@ func (s *fileSource) readFile() (*Snapshot, error) {
 	return snap, nil
 }
 
-func (s *fileSource) watchChanges() {
-	// create context and cancelation
-	ctx, cancel := context.WithCancel(context.Background())
+func (s *fileSource) Watch(ctx context.Context) {
+	if !s.watch {
+		return
+	}
 
-	s.cancel = cancel
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -160,10 +159,7 @@ func File(file string, watch ...bool) Loader {
 	s := &fileSource{
 		file:   file,
 		format: strings.ToLower(ext),
-	}
-
-	if len(watch) > 0 && watch[0] {
-		go s.watchChanges()
+		watch:  len(watch) > 0 && watch[0],
 	}
 
 	return s
