@@ -199,10 +199,12 @@ func (j *jsonValue) Bytes() []byte {
 }
 
 func (j *jsonValues) Get(path ...string) Value {
-	return &jsonValue{j.sj.GetPath(path...)}
+	return &jsonValue{j.sj.GetPath(resolvePath(path)...)}
 }
 
 func (j *jsonValues) Del(path ...string) {
+	path = resolvePath(path)
+
 	// delete the tree?
 	if len(path) == 0 {
 		j.sj = simple.New()
@@ -221,7 +223,7 @@ func (j *jsonValues) Del(path ...string) {
 }
 
 func (j *jsonValues) Set(val interface{}, path ...string) {
-	j.sj.SetPath(path, val)
+	j.sj.SetPath(resolvePath(path), val)
 }
 
 func (j *jsonValues) Bytes() []byte {
@@ -240,4 +242,17 @@ func (j *jsonValues) Scan(v interface{}) error {
 		return err
 	}
 	return json.Unmarshal(b, v)
+}
+
+func resolvePath(path []string) []string {
+	if path == nil || len(path) == 0 {
+
+		return []string{}
+	}
+
+	if len(path) == 1 {
+		return strings.Split(path[0], ".")
+	}
+
+	return path
 }

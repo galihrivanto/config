@@ -97,7 +97,7 @@ func main() {
 
 	c := config.New(
 		config.WithSource(
-			config.File("test-encoded.json", true),
+			config.File("test-encoded.json"),
 			&decoder{},
 		),
 		config.WithSource(
@@ -116,6 +116,7 @@ func main() {
 	)
 
 	fmt.Println(string(c.Bytes()))
+	fmt.Println("alert?", string(c.Get("alert.enabled").Bytes()))
 
 	go func() {
 		changed := c.Subscribe()
@@ -125,6 +126,8 @@ func main() {
 			fmt.Println("updated")
 
 			fmt.Println(string(c.Bytes()))
+
+			fmt.Println("alert?", c.Get("alert.enabled").Bool(false))
 		}
 	}()
 
