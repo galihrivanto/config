@@ -76,11 +76,13 @@ func (d *decoder) Decode(src []byte) []byte {
 }
 
 func main() {
-	var name, slogan, nested string
+	var name, slogan, nested1 string
+	var nested2 int
 
 	flag.StringVar(&name, "name", "", "person name")
 	flag.StringVar(&slogan, "slogan", "", "person slogan")
-	flag.StringVar(&nested, "nested.props.deep", "", "cli nested")
+	flag.StringVar(&nested1, "nested.props.deep", "", "cli nested")
+	flag.IntVar(&nested2, "nested.props.really", 55, "cli nested")
 
 	flag.Parse()
 
@@ -105,7 +107,10 @@ func main() {
 			config.Cli(),
 		),
 		config.WithSource(
-			config.Etcd("127.0.0.1:2379", time.Second*5, "/configuration/tems"),
+			config.Etcd("127.0.0.1:2379", config.EtcdOption{
+				Prefix:      "/configuration/app",
+				DialTimeout: time.Second * 2,
+			}),
 		),
 		config.EnableWatcher(ctx, time.Second*5),
 	)
